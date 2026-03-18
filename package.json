@@ -49,7 +49,7 @@
     }
   },
   "devDependencies": {
-    "next": "^15.5.12",
+    "next": "^16.1.7",
     "payload": "^3.79.0",
     "tsup": "^8.0.0",
     "typescript": "^5.9.3",
