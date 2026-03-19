@@ -1,4 +1,4 @@
-import { notFound, permanentRedirect } from 'next/navigation'
+import { notFound, permanentRedirect, redirect } from 'next/navigation'
 import { fetchCurrentSlug } from '../_fetch.js'
 
 export interface SlugRedirectProps {
@@ -17,6 +17,8 @@ export interface SlugRedirectProps {
   slugField?: string
   /** Fallback locale passed to the CMS when fetching the document. Default: none (uses CMS default). */
   fallbackLocale?: string
+  /** Use a permanent (308) or temporary (307) redirect. Default: true (308). */
+  permanent?: boolean
 }
 
 /**
@@ -47,6 +49,7 @@ export async function SlugRedirect({
   redirectsCollection,
   slugField,
   fallbackLocale,
+  permanent = true,
 }: SlugRedirectProps): Promise<never> {
   const newSlug = await fetchCurrentSlug({
     fromSlug: slug,
@@ -64,5 +67,5 @@ export async function SlugRedirect({
     ? buildUrl(newSlug, locale, collectionType)
     : `/${locale}/${collectionType}/${newSlug}`
 
-  return permanentRedirect(destination)
+  return permanent ? permanentRedirect(destination) : redirect(destination)
 }

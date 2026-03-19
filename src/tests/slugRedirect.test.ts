@@ -2,6 +2,9 @@ import { describe, expect, it, vi, afterEach } from 'vitest'
 
 vi.mock('next/navigation', () => ({
   permanentRedirect: vi.fn((url: string) => {
+    throw new Error(`NEXT_PERMANENT_REDIRECT:${url}`)
+  }),
+  redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
   notFound: vi.fn(() => {
@@ -10,7 +13,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { SlugRedirect } from '../next/app/index.js'
-import { permanentRedirect, notFound } from 'next/navigation'
+import { permanentRedirect, redirect, notFound } from 'next/navigation'
 
 function mockFetch(...responses: Array<{ ok: boolean; json?: object }>) {
   const fetchMock = vi.fn()
@@ -42,7 +45,7 @@ describe('SlugRedirect', () => {
       { ok: true, json: { docs: [{ documentId: 42 }], totalDocs: 1 } },
       { ok: true, json: { slug: 'new-slug' } },
     )
-    await expect(SlugRedirect(baseProps)).rejects.toThrow('NEXT_REDIRECT:/en/posts/new-slug')
+    await expect(SlugRedirect(baseProps)).rejects.toThrow('NEXT_PERMANENT_REDIRECT:/en/posts/new-slug')
     expect(permanentRedirect).toHaveBeenCalledWith('/en/posts/new-slug')
   })
 
@@ -52,7 +55,7 @@ describe('SlugRedirect', () => {
       { ok: true, json: { slug: 'new-slug' } },
     )
     const buildUrl = (s: string, l: string, ct: string) => `/custom/${l}/${ct}/${s}`
-    await expect(SlugRedirect({ ...baseProps, buildUrl })).rejects.toThrow('NEXT_REDIRECT:/custom/en/posts/new-slug')
+    await expect(SlugRedirect({ ...baseProps, buildUrl })).rejects.toThrow('NEXT_PERMANENT_REDIRECT:/custom/en/posts/new-slug')
     expect(permanentRedirect).toHaveBeenCalledWith('/custom/en/posts/new-slug')
   })
 
@@ -75,7 +78,7 @@ describe('SlugRedirect', () => {
     )
     await expect(
       SlugRedirect({ ...baseProps, redirectsCollection: 'my-redirects', slugField: 'customField' }),
-    ).rejects.toThrow('NEXT_REDIRECT')
+    ).rejects.toThrow('NEXT_PERMANENT_REDIRECT')
     expect(fetchMock.mock.calls[0][0]).toContain('/api/my-redirects')
   })
 
@@ -86,7 +89,27 @@ describe('SlugRedirect', () => {
     )
     await expect(
       SlugRedirect({ ...baseProps, fallbackLocale: 'ar' }),
-    ).rejects.toThrow('NEXT_REDIRECT')
+    ).rejects.toThrow('NEXT_PERMANENT_REDIRECT')
     expect(fetchMock.mock.calls[1][0]).toContain('fallbackLocale=ar')
+  })
+
+  it('uses temporary redirect (307) when permanent is false', async () => {
+    mockFetch(
+      { ok: true, json: { docs: [{ documentId: 1 }], totalDocs: 1 } },
+      { ok: true, json: { slug: 'new-slug' } },
+    )
+    await expect(SlugRedirect({ ...baseProps, permanent: false })).rejects.toThrow('NEXT_REDIRECT:/en/posts/new-slug')
+    expect(redirect).toHaveBeenCalledWith('/en/posts/new-slug')
+    expect(permanentRedirect).not.toHaveBeenCalled()
+  })
+
+  it('defaults to permanent redirect (308) when permanent is not specified', async () => {
+    mockFetch(
+      { ok: true, json: { docs: [{ documentId: 1 }], totalDocs: 1 } },
+      { ok: true, json: { slug: 'new-slug' } },
+    )
+    await expect(SlugRedirect(baseProps)).rejects.toThrow('NEXT_PERMANENT_REDIRECT')
+    expect(permanentRedirect).toHaveBeenCalled()
+    expect(redirect).not.toHaveBeenCalled()
   })
 })
