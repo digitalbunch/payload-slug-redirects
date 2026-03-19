@@ -12,11 +12,13 @@ Chained renames work automatically. If a slug changes from A to B to C, both old
 - [Install](#install)
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
+- [Working with Payload's native slug field](#working-with-payloads-native-slug-field)
 - [Slug field injection](#slug-field-injection)
 - [Options](#options)
 - [Next.js App Router](#nextjs--app-router)
 - [Next.js Pages Router](#nextjs--pages-router)
 - [API route handler](#api-route-handler)
+- [The slug-redirects collection](#the-slug-redirects-collection)
 - [Exports](#exports)
 - [Requirements](#requirements)
 - [Contributing](#contributing)
@@ -183,7 +185,7 @@ export default async function PostPage({ params }) {
 }
 ```
 
-`SlugRedirect` is a React Server Component. It calls `permanentRedirect()` (308) or `notFound()`. It never renders HTML.
+`SlugRedirect` is a React Server Component. It calls `permanentRedirect()` (308) or `notFound()`. It never renders HTML. Pass `permanent={false}` for a temporary redirect (307) instead.
 
 ## Next.js -- Pages Router
 
@@ -203,6 +205,9 @@ if (!post) {
   if (redirect) return redirect   // { redirect: { destination, permanent: true } }
   return { notFound: true }
 }
+
+// Pass `permanent: false` for a temporary redirect (302) instead of permanent (301).
+
 ```
 
 ## API route handler
