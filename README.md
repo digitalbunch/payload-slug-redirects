@@ -60,7 +60,42 @@ On the frontend, when a visitor hits a URL that doesn't match any document, you 
 
 Because records point to document IDs (not destination slugs), chain renames resolve correctly without cleanup.
 
+## Working with Payload's native slug field
+
+Payload v3 ships with a built-in [`slugField()`](https://payloadcms.com/docs/fields/text#slug-field) helper that auto-generates URL-friendly slugs from a source field like `title`:
+
+```ts
+import { slugField } from 'payload'
+
+export const Pages: CollectionConfig = {
+  slug: 'pages',
+  fields: [
+    { name: 'title', type: 'text', required: true },
+    slugField({ fieldToUse: 'title' }),
+  ],
+}
+```
+
+This plugin is fully compatible with it. When a slug field already exists on a collection, the plugin skips injection and only adds the `afterChange` hook for redirect tracking.
+
+**Single-locale sites** work out of the box. The native `slugField()` creates a `slug` text field, and the plugin reads it directly in the hook.
+
+**Multi-locale sites** need one extra step. Payload's native `slugField({ localized: true })` stores per-locale values using Payload's built-in localization. The problem is that `afterChange` hooks only receive the current locale's string value, not an object with all locales. The hook sees `"my-post"` instead of `{ en: "my-post", ar: "..." }`, which means it can't detect slug changes in other locales from a single save.
+
+The workaround: let the plugin inject its own `localizedSlugs` JSON field for internal change tracking, and keep using the native slug field for your frontend. They serve different purposes and coexist without conflict:
+
+```ts
+slugRedirectsPlugin({
+  collections: ['pages'],
+  locales: ['en', 'ar'],
+  // slugField defaults to 'localizedSlugs' for multi-locale setups
+  // Your native slugField('slug') is untouched -- the plugin adds a separate field
+})
+```
+
 ## Slug field injection
+
+If you don't use Payload's native `slugField()`, the plugin injects one for you:
 
 | Site type | Config | Injected field |
 |-----------|--------|----------------|
@@ -68,8 +103,6 @@ Because records point to document IDs (not destination slugs), chain renames res
 | Multi language | `collections: ['posts'], locales: ['en', 'ar']` | `{ name: 'localizedSlugs', type: 'json' }` |
 
 If the field already exists on your collection, the plugin leaves it alone.
-
-**Why `json` instead of `localized: true`?** Payload v3 returns only the current locale's value in `afterChange` hooks, not an object with all locales. A single `json` field storing `{"en":"my-post","ar":"..."}` is the only reliable way to track per-locale slug changes.
 
 ## Options
 
