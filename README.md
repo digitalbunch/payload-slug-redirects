@@ -217,7 +217,7 @@ Write access is locked down. Only the plugin's hook can create records (via `ove
 
 - PayloadCMS `^3.0.0`
 - Next.js `>=14.0.0` (optional, only for the Next.js utilities)
-- Node.js 18, 20, or 22
+- Node.js 20 or later
 
 ## Versioning
 
