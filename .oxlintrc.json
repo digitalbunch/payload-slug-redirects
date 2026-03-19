@@ -1,0 +1,25 @@
+{
+  "$schema": "https://oxc.rs/schema/oxlint.json",
+  "plugins": ["typescript"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "off"
+  },
+  "rules": {
+    "no-unused-vars": "error",
+    "no-console": "warn",
+    "prefer-const": "error",
+    "no-var": "error",
+    "typescript/no-explicit-any": "off"
+  },
+  "overrides": [
+    {
+      "files": ["src/tests/**/*.ts"],
+      "rules": {
+        "no-unused-vars": "off",
+        "no-console": "off"
+      }
+    }
+  ]
+}

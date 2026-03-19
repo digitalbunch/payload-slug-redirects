@@ -9,8 +9,8 @@ pnpm test                                        # run all tests (vitest)
 pnpm test -- src/tests/plugin.test.ts            # run a single test file
 pnpm test:watch                                  # watch mode
 pnpm typecheck                                   # tsc --noEmit
-pnpm lint                                        # eslint
-pnpm lint:fix                                    # eslint --fix
+pnpm lint                                        # oxlint
+pnpm lint:fix                                    # oxlint --fix
 pnpm build                                       # tsup -- builds dist/
 ```
 

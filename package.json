@@ -40,8 +40,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
+    "lint": "oxlint src/",
+    "lint:fix": "oxlint src/ --fix",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
@@ -56,11 +56,9 @@
     }
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.57.1",
-    "@typescript-eslint/parser": "^8.57.1",
     "@vitest/coverage-v8": "^4.1.0",
-    "eslint": "^10.0.3",
     "next": "^15.5.12",
+    "oxlint": "^1.56.0",
     "payload": "^3.79.0",
     "tsup": "^8.0.0",
     "typescript": "^5.9.3",
