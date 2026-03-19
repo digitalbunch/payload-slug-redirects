@@ -106,6 +106,24 @@ describe('fetchCurrentSlug', () => {
     expect(url).toContain('limit=1')
   })
 
+  it('does not include fallbackLocale when not provided', async () => {
+    const fetchMock = mockFetch(
+      { ok: true, json: { docs: [{ documentId: 42 }], totalDocs: 1 } },
+      { ok: true, json: { slug: 'new-slug' } },
+    )
+    await fetchCurrentSlug(BASE_OPTIONS)
+    expect(fetchMock.mock.calls[1][0]).not.toContain('fallbackLocale')
+  })
+
+  it('includes fallbackLocale in the document query when provided', async () => {
+    const fetchMock = mockFetch(
+      { ok: true, json: { docs: [{ documentId: 42 }], totalDocs: 1 } },
+      { ok: true, json: { slug: 'new-slug' } },
+    )
+    await fetchCurrentSlug({ ...BASE_OPTIONS, fallbackLocale: 'ar' })
+    expect(fetchMock.mock.calls[1][0]).toContain('fallbackLocale=ar')
+  })
+
   it('fetches the document by its ID from the correct collection', async () => {
     const fetchMock = mockFetch(
       { ok: true, json: { docs: [{ documentId: 99 }], totalDocs: 1 } },

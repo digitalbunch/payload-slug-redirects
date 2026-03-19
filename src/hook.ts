@@ -4,9 +4,9 @@ import type { CollectionEntry, SlugRedirectsCollectionOptions } from './types.js
 /**
  * Extracts per-locale slugs from a document field, auto-detecting the storage pattern:
  *
- * - **Plain object** `{ en: 'my-slug', ar: '...' }` — standard Payload i18n localized field
- * - **JSON string** `'{"en":"my-slug","ar":"..."}'` — custom JSON blob field
- * - **Plain string** `'my-slug'` — non-localized field, applied to all tracked locales
+ * - **Plain object** `{ en: 'my-slug', ar: '...' }` -- standard Payload i18n localized field
+ * - **JSON string** `'{"en":"my-slug","ar":"..."}'` -- custom JSON blob field
+ * - **Plain string** `'my-slug'` -- non-localized field, applied to all tracked locales
  */
 export function extractSlugs(
   record: Record<string, unknown>,
@@ -16,19 +16,16 @@ export function extractSlugs(
   const raw = record[slugField]
   if (!raw) return {}
 
-  // Standard Payload i18n — localized field exposed as object { en: '...', ar: '...' }
   if (Array.isArray(raw)) return {}
   if (typeof raw === 'object') return raw as Record<string, string>
 
   if (typeof raw === 'string') {
-    // Try JSON blob pattern — '{"en":"my-slug","ar":"..."}'
     try {
       const parsed: unknown = JSON.parse(raw)
       if (parsed !== null && typeof parsed === 'object') return parsed as Record<string, string>
     } catch {
-      // Not JSON — fall through to plain string
+      // Not JSON -- fall through to plain string
     }
-    // Plain non-localized string — apply to all tracked locales
     return Object.fromEntries(locales.map((l) => [l, raw]))
   }
 
@@ -39,6 +36,7 @@ export const createRedirectOnSlugChange = (
   collections: CollectionEntry[],
   locales: string[],
   revalidateUrl?: string,
+  revalidateHeaders?: Record<string, string>,
   collectionOptions?: SlugRedirectsCollectionOptions,
 ): CollectionAfterChangeHook => {
   const collectionSlug = collectionOptions?.name ?? 'slug-redirects'
@@ -71,19 +69,20 @@ export const createRedirectOnSlugChange = (
       try {
         await req.payload.create({
           collection: collectionSlug,
-          data: { fromSlug: oldSlug, locale, collectionType, documentId: doc.id as number },
+          overrideAccess: true,
+          data: { fromSlug: oldSlug, locale, collectionType, documentId: String(doc.id) },
         })
         req.payload.logger.info(
-          `[slug-redirects] ${collectionType}[${locale}] ${oldSlug} → doc #${String(doc.id)} (now ${newSlug})`
+          `[slug-redirects] ${collectionType}[${locale}] ${oldSlug} -> doc #${String(doc.id)} (now ${newSlug})`
         )
 
         const callbackArgs = { fromSlug: oldSlug, toSlug: newSlug, collectionType, locale }
-        entry.onChange?.(callbackArgs)
-        collectionOptions?.onChange?.(callbackArgs)
+        await Promise.resolve(entry.onChange?.(callbackArgs))
+        await Promise.resolve(collectionOptions?.onChange?.(callbackArgs))
 
         if (revalidateUrl && process.env.NODE_ENV === 'production') {
-          const url = `${revalidateUrl}?type=${encodeURIComponent(collectionType)}&slug=${encodeURIComponent(oldSlug)}`
-          fetch(url).catch((err) => {
+          const url = `${revalidateUrl}?type=${encodeURIComponent(collectionType)}&slug=${encodeURIComponent(oldSlug)}&locale=${encodeURIComponent(locale)}`
+          fetch(url, revalidateHeaders ? { headers: revalidateHeaders } : undefined).catch((err) => {
             req.payload.logger.error({ err }, `[slug-redirects] Failed to revalidate old slug path: ${url}`)
           })
         }

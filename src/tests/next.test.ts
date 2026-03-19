@@ -157,9 +157,9 @@ describe('resolveSlugRedirect', () => {
       locale: 'ar',
       collectionType: 'posts',
       cmsUrl: 'https://cms.example.com',
-      buildUrl: (slug, locale) => `/custom/${locale}/${slug}`,
+      buildUrl: (slug, locale, collectionType) => `/custom/${locale}/${collectionType}/${slug}`,
     })
-    expect(result?.redirect.destination).toBe('/custom/ar/new-slug')
+    expect(result?.redirect.destination).toBe('/custom/ar/posts/new-slug')
   })
 
   it('uses default destination URL without buildUrl', async () => {

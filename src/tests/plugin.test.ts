@@ -124,6 +124,12 @@ describe('slugRedirectsPlugin', () => {
     expect(slugField).toBeUndefined()
   })
 
+  it('returns the incoming config unchanged when enabled is false', () => {
+    const plugin = slugRedirectsPlugin({ enabled: false, collections: ['posts'] })
+    const result = plugin(baseConfig as any)
+    expect(result).toBe(baseConfig)
+  })
+
   it('does not mutate the incoming config', () => {
     const plugin = slugRedirectsPlugin({ collections: ['posts'] })
     const original = JSON.stringify(baseConfig)

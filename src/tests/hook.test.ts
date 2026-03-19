@@ -77,7 +77,7 @@ describe('createRedirectOnSlugChange', () => {
     expect(args.req.payload.create).toHaveBeenCalledWith(
       expect.objectContaining({
         collection: 'slug-redirects',
-        data: expect.objectContaining({ fromSlug: 'old-slug', locale: 'en', collectionType: 'posts', documentId: 1 }),
+        data: expect.objectContaining({ fromSlug: 'old-slug', locale: 'en', collectionType: 'posts', documentId: '1' }),
       })
     )
   })
@@ -117,9 +117,26 @@ describe('createRedirectOnSlugChange', () => {
     )
   })
 
+  it('awaits async onChange callbacks without blocking the hook', async () => {
+    const order: string[] = []
+    const asyncOnChange = vi.fn().mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 5))
+      order.push('async-done')
+    })
+    const collections: CollectionEntry[] = [{ name: 'posts', slugField: 'localizedSlugs', onChange: asyncOnChange }]
+    const hook = createRedirectOnSlugChange(collections, LOCALES)
+    const args = makeHookArgs({
+      doc: { id: 1, localizedSlugs: '{"en":"new-slug","ar":"same"}' },
+      previousDoc: { id: 1, localizedSlugs: '{"en":"old-slug","ar":"same"}' },
+    })
+    await hook(args as any)
+    expect(asyncOnChange).toHaveBeenCalled()
+    expect(order).toContain('async-done')
+  })
+
   it('calls collectionOptions onChange with correct args when slug changes', async () => {
     const onChange = vi.fn()
-    const hook = createRedirectOnSlugChange(COLLECTIONS, LOCALES, undefined, { onChange })
+    const hook = createRedirectOnSlugChange(COLLECTIONS, LOCALES, undefined, undefined, { onChange })
     const args = makeHookArgs()
     await hook(args as any)
     expect(onChange).toHaveBeenCalledWith(
@@ -194,7 +211,22 @@ describe('createRedirectOnSlugChange', () => {
     await hook(args as any)
     expect(args.req.payload.create).toHaveBeenCalledTimes(2)
     expect(args.req.payload.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ fromSlug: 'old-slug' }) })
+      expect.objectContaining({ data: expect.objectContaining({ fromSlug: 'old-slug', documentId: '1' }) })
+    )
+  })
+
+  it('sends revalidateHeaders with revalidation requests', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({})
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubEnv('NODE_ENV', 'production')
+
+    const headers = { Authorization: 'Bearer secret' }
+    const hook = createRedirectOnSlugChange(COLLECTIONS, LOCALES, 'https://mysite.com/api/revalidate', headers)
+    const args = makeHookArgs()
+    await hook(args as any)
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ headers: { Authorization: 'Bearer secret' } }),
     )
   })
 
@@ -208,7 +240,8 @@ describe('createRedirectOnSlugChange', () => {
     await hook(args as any)
 
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('https://mysite.com/api/revalidate'))
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('https://mysite.com/api/revalidate'), undefined)
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('locale='), undefined)
   })
 
   it('does not call revalidateUrl outside production', async () => {
@@ -222,8 +255,17 @@ describe('createRedirectOnSlugChange', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('creates redirect records with overrideAccess to bypass collection access control', async () => {
+    const hook = createRedirectOnSlugChange(COLLECTIONS, LOCALES)
+    const args = makeHookArgs()
+    await hook(args as any)
+    expect(args.req.payload.create).toHaveBeenCalledWith(
+      expect.objectContaining({ overrideAccess: true })
+    )
+  })
+
   it('uses the custom collection slug when configured', async () => {
-    const hook = createRedirectOnSlugChange(COLLECTIONS, LOCALES, undefined, { name: 'custom-redirects' })
+    const hook = createRedirectOnSlugChange(COLLECTIONS, LOCALES, undefined, undefined, { name: 'custom-redirects' })
     const args = makeHookArgs()
     await hook(args as any)
     expect(args.req.payload.create).toHaveBeenCalledWith(

@@ -30,7 +30,12 @@ export function buildSlugRedirectsCollection(
 
   return {
     slug: collectionSlug,
-    access: { read: () => true },
+    access: {
+      read: () => true,
+      create: () => false,
+      update: () => false,
+      delete: () => true,
+    },
     admin: {
       hidden,
       group: 'System',
@@ -41,7 +46,7 @@ export function buildSlugRedirectsCollection(
       { name: 'fromSlug', type: 'text', required: true, index: true },
       { name: 'locale', type: 'select', required: true, options: localeOptions },
       { name: 'collectionType', type: 'select', required: true, options: collectionOptions },
-      { name: 'documentId', type: 'number', required: true },
+      { name: 'documentId', type: 'text', required: true },
     ],
   }
 }

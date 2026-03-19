@@ -11,6 +11,8 @@ export interface FetchSlugOptions {
   redirectsCollection?: string
   /** The document field to read the current slug from. Default: 'slug' */
   slugField?: string
+  /** Fallback locale passed to the CMS when fetching the document. Default: none (uses CMS default). */
+  fallbackLocale?: string
 }
 
 /**
@@ -18,7 +20,7 @@ export interface FetchSlugOptions {
  * of the target document, or `null` if no redirect exists.
  */
 export async function fetchCurrentSlug(options: FetchSlugOptions): Promise<string | null> {
-  const { fromSlug, locale, collectionType, cmsUrl, redirectsCollection = 'slug-redirects', slugField = 'slug' } = options
+  const { fromSlug, locale, collectionType, cmsUrl, redirectsCollection = 'slug-redirects', slugField = 'slug', fallbackLocale } = options
   const base = cmsUrl.replace(/\/$/, '')
 
   // 1. Find the redirect record
@@ -43,12 +45,13 @@ export async function fetchCurrentSlug(options: FetchSlugOptions): Promise<strin
   const { documentId } = redirectData.docs[0]!
 
   // 2. Fetch current document to get its slug
-  const docQuery = new URLSearchParams({
+  const docParams: Record<string, string> = {
     locale,
-    fallbackLocale: 'en',
     depth: '0',
     [`select[${slugField}]`]: 'true',
-  })
+  }
+  if (fallbackLocale) docParams.fallbackLocale = fallbackLocale
+  const docQuery = new URLSearchParams(docParams)
 
   const docRes = await fetch(`${base}/api/${collectionType}/${documentId}?${docQuery.toString()}`)
   if (!docRes.ok) return null
