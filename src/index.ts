@@ -5,24 +5,26 @@ import type { CollectionEntry, SlugRedirectsPluginOptions } from './types.js'
 
 export const slugRedirectsPlugin = (options: SlugRedirectsPluginOptions) => {
   const {
+    enabled = true,
     collections: rawCollections,
     locales = ['en'],
     slugField = locales.length > 1 ? 'localizedSlugs' : 'slug',
     revalidateUrl,
+    revalidateHeaders,
     collection: collectionOptions,
   } = options
 
-  // Normalize string shorthands into CollectionEntry objects.
-  // Plugin-level slugField is the default — per-collection value overrides via spread.
-  const collections: CollectionEntry[] = rawCollections.map((c) =>
-    typeof c === 'string'
-      ? { name: c, slugField }
-      : { slugField, ...c }
-  )
-
   return ((incomingConfig: Config): Config => {
+    if (!enabled) return incomingConfig
+
+    const collections: CollectionEntry[] = rawCollections.map((c) =>
+      typeof c === 'string'
+        ? { name: c, slugField }
+        : { slugField, ...c }
+    )
+
     const slugRedirectsCollection = buildSlugRedirectsCollection(collections, locales, collectionOptions)
-    const redirectHook = createRedirectOnSlugChange(collections, locales, revalidateUrl, collectionOptions)
+    const redirectHook = createRedirectOnSlugChange(collections, locales, revalidateUrl, revalidateHeaders, collectionOptions)
 
     const collectionMap = new Map(collections.map((c) => [c.name, c]))
     const updatedCollections = (incomingConfig.collections ?? []).map((collection) => {

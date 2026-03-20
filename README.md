@@ -1,26 +1,30 @@
-<p align="center">
-  <h1 align="center">📦 payload-slug-redirects</h1>
-  <p align="center">
-    Automatic slug-change redirects for PayloadCMS v3 — zero config, zero 404s.
-  </p>
-  <p align="center">
-    <img src="https://img.shields.io/npm/v/payload-slug-redirects?style=flat-square&color=black" alt="npm version" />
-    <img src="https://img.shields.io/badge/payload-v3-black?style=flat-square" alt="PayloadCMS v3" />
-    <img src="https://img.shields.io/badge/next.js-≥14-black?style=flat-square" alt="Next.js" />
-    <img src="https://img.shields.io/badge/license-MIT-black?style=flat-square" alt="MIT" />
-    <img src="https://img.shields.io/badge/tests-77%20passing-black?style=flat-square" alt="tests" />
-  </p>
-</p>
+# payload-slug-redirects
 
----
+Automatic slug-change redirects for PayloadCMS v3. When an editor renames a page, the old URL stops working. This plugin records every slug change and gives your Next.js frontend the data it needs to issue a permanent redirect to the current URL.
 
-When an editor renames a page in PayloadCMS, the URL slug changes. Anyone with the old link gets a 404.
+Chained renames work automatically. If a slug changes from A to B to C, both old URLs resolve to C because redirect records store the document ID, not the destination slug.
 
-**payload-slug-redirects** fixes this automatically — it tracks every slug change, stores a redirect record, and lets your Next.js frontend issue a 301 to the current URL. No rebuild. No manual work. Chained renames (A → B → C) resolve correctly without any cleanup.
+[![npm version](https://img.shields.io/npm/v/payload-slug-redirects?style=flat-square&color=black)](https://www.npmjs.com/package/payload-slug-redirects)
+[![MIT license](https://img.shields.io/badge/license-MIT-black?style=flat-square)](./LICENSE)
 
----
+## Table of contents
 
-## ⚡ Install
+- [Install](#install)
+- [Quick start](#quick-start)
+- [How it works](#how-it-works)
+- [Working with Payload's native slug field](#working-with-payloads-native-slug-field)
+- [Slug field injection](#slug-field-injection)
+- [Options](#options)
+- [Next.js App Router](#nextjs--app-router)
+- [Next.js Pages Router](#nextjs--pages-router)
+- [API route handler](#api-route-handler)
+- [The slug-redirects collection](#the-slug-redirects-collection)
+- [Exports](#exports)
+- [Requirements](#requirements)
+- [Contributing](#contributing)
+- [License](#license)
+
+## Install
 
 ```bash
 npm install payload-slug-redirects
@@ -28,9 +32,7 @@ npm install payload-slug-redirects
 pnpm add payload-slug-redirects
 ```
 
----
-
-## 🚀 Quick start
+## Quick start
 
 ```ts
 // payload.config.ts
@@ -40,94 +42,103 @@ export default buildConfig({
   plugins: [
     slugRedirectsPlugin({
       collections: ['posts', 'case-studies'],
-      locales: ['en', 'ar'],             // omit for single-language sites
+      locales: ['en', 'ar'],  // omit for single-language sites
     }),
   ],
 })
 ```
 
-That's it. The plugin:
+The plugin does three things:
 
-- 🔌 Injects the slug field into watched collections automatically
-- 🪝 Adds an `afterChange` hook that records every slug change
-- 🗃️ Creates a `slug-redirects` collection in your database
+1. Injects a slug field into watched collections (unless one already exists).
+2. Adds an `afterChange` hook that records slug changes.
+3. Creates a `slug-redirects` collection in your database.
 
----
+## How it works
 
-## 🔍 How it works
+When an editor saves a document with a changed slug, the `afterChange` hook compares the old and new values. If they differ, it creates a redirect record with the old slug, locale, collection type, and document ID.
 
-```
-✏️  Editor publishes a renamed document
-        │
-        ▼
-🪝  afterChange hook compares old slug ↔ new slug
-        │
-        ├─ unchanged → do nothing
-        │
-        └─ changed   → 💾 save { fromSlug, locale, collectionType, documentId }
-                          └─ 🔄 production only: call revalidateUrl (fire-and-forget)
+On the frontend, when a visitor hits a URL that doesn't match any document, you query the `slug-redirects` collection for the old slug. If a record exists, you fetch the document by its stored ID to get the current slug, then redirect.
 
+Because records point to document IDs (not destination slugs), chain renames resolve correctly without cleanup.
 
-🌐  Visitor hits the old URL
-        │
-        ▼
-🔎  Frontend queries slug-redirects where fromSlug = old slug
-        │
-        ├─ no record → 404
-        │
-        └─ found → fetch current slug by documentId → 301 redirect ✅
+## Working with Payload's native slug field
+
+Payload v3 ships with a built-in [`slugField()`](https://payloadcms.com/docs/fields/text#slug-field) helper that auto-generates URL-friendly slugs from a source field like `title`:
+
+```ts
+import { slugField } from 'payload'
+
+export const Pages: CollectionConfig = {
+  slug: 'pages',
+  fields: [
+    { name: 'title', type: 'text', required: true },
+    slugField({ fieldToUse: 'title' }),
+  ],
+}
 ```
 
-> 🔗 **Smart chaining:** Redirect records store the document ID, not the new slug. So if a slug changes A → B → C, both old records still resolve to C — automatically, forever.
+This plugin is fully compatible with it. When a slug field already exists on a collection, the plugin skips injection and only adds the `afterChange` hook for redirect tracking.
 
----
+**Single-locale sites** work out of the box. The native `slugField()` creates a `slug` text field, and the plugin reads it directly in the hook.
 
-## 💉 Slug field auto-injection
+**Multi-locale sites** need one extra step. Payload's native `slugField({ localized: true })` stores per-locale values using Payload's built-in localization. The problem is that `afterChange` hooks only receive the current locale's string value, not an object with all locales. The hook sees `"my-post"` instead of `{ en: "my-post", ar: "..." }`, which means it can't detect slug changes in other locales from a single save.
 
-The plugin injects the slug field into your watched collections — no manual field definition needed.
-
-| Site type | Config | Injected field |
-|-----------|--------|----------------|
-| 🌍 Single language | `collections: ['posts']` | `{ name: 'slug', type: 'text' }` |
-| 🌐 Multi language | `collections: ['posts'], locales: ['en', 'ar']` | `{ name: 'localizedSlugs', type: 'json' }` |
-
-If the field already exists on your collection, it is left untouched.
-
-> ⚠️ **Why `json` and not `localized: true`?** Payload v3 returns only the current locale's value in `afterChange` hooks — not an object with all locales. A single `json` field storing `{"en":"my-post","ar":"مقالتي"}` is the only reliable way to track per-locale slug changes.
-
----
-
-## ⚙️ Options
+The workaround: let the plugin inject its own `localizedSlugs` JSON field for internal change tracking, and keep using the native slug field for your frontend. They serve different purposes and coexist without conflict:
 
 ```ts
 slugRedirectsPlugin({
-  collections: ['posts'],              // required — watch these collections
+  collections: ['pages'],
+  locales: ['en', 'ar'],
+  // slugField defaults to 'localizedSlugs' for multi-locale setups
+  // Your native slugField('slug') is untouched -- the plugin adds a separate field
+})
+```
 
-  locales: ['en', 'ar'],               // default: ['en']
+## Slug field injection
 
-  slugField: 'localizedSlugs',         // default: 'slug' (single) or 'localizedSlugs' (multi)
+If you don't use Payload's native `slugField()`, the plugin injects one for you:
 
-  revalidateUrl: 'https://mysite.com/api/revalidate',  // called after each redirect (prod only)
+| Site type | Config | Injected field |
+|-----------|--------|----------------|
+| Single language | `collections: ['posts']` | `{ name: 'slug', type: 'text' }` |
+| Multi language | `collections: ['posts'], locales: ['en', 'ar']` | `{ name: 'localizedSlugs', type: 'json' }` |
 
+If the field already exists on your collection, the plugin leaves it alone.
+
+## Options
+
+```ts
+slugRedirectsPlugin({
+  enabled: true,                         // set false to disable without removing
+  collections: ['posts'],                // required
+  locales: ['en', 'ar'],                 // default: ['en']
+  slugField: 'localizedSlugs',           // default: 'slug' or 'localizedSlugs'
+  revalidateUrl: 'https://mysite.com/api/revalidate',
+  revalidateHeaders: {                   // sent with revalidation requests
+    Authorization: 'Bearer secret',
+  },
   collection: {
-    name: 'my-redirects',              // default: 'slug-redirects'
-    visibleInTheUI: false,             // default: true
-    onChange: ({ fromSlug, toSlug, locale, collectionType }) => { ... },
+    name: 'my-redirects',                // default: 'slug-redirects'
+    visibleInTheUI: false,               // default: true
+    onChange: async ({ fromSlug, toSlug, locale, collectionType }) => {
+      // fires on any slug change -- async callbacks are supported
+    },
   },
 })
 ```
 
-### 🎛️ Per-collection overrides
+### Per-collection overrides
 
 ```ts
 slugRedirectsPlugin({
   collections: [
-    'posts',                           // shorthand — uses plugin defaults
+    'posts',                             // uses plugin defaults
     {
       name: 'case-studies',
-      slugField: 'customSlugField',    // override slug field for this collection only
+      slugField: 'customSlugField',
       onChange: ({ fromSlug, toSlug, locale }) => {
-        console.log(`${locale}: ${fromSlug} → ${toSlug}`)
+        console.log(`${locale}: ${fromSlug} -> ${toSlug}`)
       },
     },
   ],
@@ -135,21 +146,21 @@ slugRedirectsPlugin({
 })
 ```
 
-### 📋 Options reference
+### Options reference
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
+| `enabled` | `boolean` | `true` | Disable the plugin without removing it from config |
 | `collections` | `Array<string \| CollectionEntry>` | required | Collections to watch |
 | `locales` | `string[]` | `['en']` | Locale codes to track |
 | `slugField` | `string` | auto | `'slug'` for single locale, `'localizedSlugs'` for multi |
-| `revalidateUrl` | `string` | — | Revalidation endpoint URL (production only) |
+| `revalidateUrl` | `string` | -- | Revalidation endpoint URL (production only) |
+| `revalidateHeaders` | `Record<string, string>` | -- | Custom headers for revalidation requests |
 | `collection.name` | `string` | `'slug-redirects'` | Custom collection slug |
 | `collection.visibleInTheUI` | `boolean` | `true` | Show in admin sidebar |
-| `collection.onChange` | `(args) => void` | — | Fires on any slug change |
+| `collection.onChange` | `(args) => void \| Promise<void>` | -- | Fires on any slug change |
 
----
-
-## ⚛️ Next.js — App Router
+## Next.js -- App Router
 
 ```tsx
 // app/[locale]/posts/[slug]/page.tsx
@@ -165,7 +176,7 @@ export default async function PostPage({ params }) {
         collectionType="posts"
         locale={params.locale}
         cmsUrl={process.env.CMS_URL!}
-        buildUrl={(s, l) => `/${l}/posts/${s}`}
+        buildUrl={(slug, locale, collectionType) => `/${locale}/${collectionType}/${slug}`}
       />
     )
   }
@@ -174,16 +185,15 @@ export default async function PostPage({ params }) {
 }
 ```
 
-`<SlugRedirect />` is a React Server Component. It either calls `redirect()` (308) or `notFound()` — it never renders HTML.
+`SlugRedirect` is a React Server Component. It calls `permanentRedirect()` (308) or `notFound()`. It never renders HTML. Pass `permanent={false}` for a temporary redirect (307) instead.
 
----
-
-## 📄 Next.js — Pages Router
+## Next.js -- Pages Router
 
 ```ts
-// pages/posts/[slug].tsx — getStaticProps
+// pages/posts/[slug].tsx
 import { resolveSlugRedirect } from 'payload-slug-redirects/next/pages'
 
+// inside getStaticProps
 if (!post) {
   const redirect = await resolveSlugRedirect({
     fromSlug: slug,
@@ -192,16 +202,17 @@ if (!post) {
     cmsUrl: process.env.NEXT_PUBLIC_CMS_API_URL!,
     buildUrl: (s, l) => l === 'ar' ? `/ar/posts/${s}` : `/posts/${s}`,
   })
-  if (redirect) return redirect        // { redirect: { destination, permanent: true } }
+  if (redirect) return redirect   // { redirect: { destination, permanent: true } }
   return { notFound: true }
 }
+
+// Pass `permanent: false` for a temporary redirect (302) instead of permanent (301).
+
 ```
 
----
+## API route handler
 
-## 🛣️ Optional API route
-
-Expose a dedicated endpoint for client-side redirect lookups:
+Optional endpoint for client-side redirect lookups:
 
 ```ts
 // pages/api/slug-redirects.ts
@@ -214,44 +225,46 @@ export default createSlugRedirectHandler({
 
 ```
 GET /api/slug-redirects?fromSlug=old-slug&locale=en&collectionType=posts
-→ 200  { slug: 'new-slug' }
-→ 404  { error: 'No redirect found' }
+200  { slug: 'new-slug' }
+404  { error: 'No redirect found' }
 ```
 
----
+## The slug-redirects collection
 
-## 🗃️ The `slug-redirects` collection
-
-Auto-created by the plugin. Visible in the admin UI under the **System** group.
+Auto-created by the plugin. Visible in the admin UI under the "System" group by default.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `fromSlug` | text, indexed | The old slug |
 | `locale` | select | Locale this redirect applies to |
-| `collectionType` | select | Collection the document belongs to |
-| `documentId` | number | Document ID — used to fetch the current slug |
+| `collectionType` | select | Source collection |
+| `documentId` | text | Document ID (works with both SQL and MongoDB) |
 
----
+Write access is locked down. Only the plugin's hook can create records (via `overrideAccess`). Admins can delete stale records through the UI.
 
-## 📦 Exports
+## Exports
 
 | Import path | Exports |
 |-------------|---------|
-| `payload-slug-redirects` | `slugRedirectsPlugin` · `buildSlugRedirectsCollection` · `createRedirectOnSlugChange` |
-| `payload-slug-redirects/next/app` | `<SlugRedirect />` RSC |
+| `payload-slug-redirects` | `slugRedirectsPlugin`, `buildSlugRedirectsCollection`, `createRedirectOnSlugChange` |
+| `payload-slug-redirects/next/app` | `SlugRedirect` (RSC) |
 | `payload-slug-redirects/next/pages` | `resolveSlugRedirect()` |
 | `payload-slug-redirects/next` | `createSlugRedirectHandler()` |
 
----
-
-## 🛠️ Requirements
+## Requirements
 
 - PayloadCMS `^3.0.0`
-- Next.js `>=14.0.0` *(optional — only needed for Next.js utilities)*
-- Node.js with ESM support
+- Next.js `>=14.0.0` (optional, only for the Next.js utilities)
+- Node.js 20 or later
 
----
+## Versioning
 
-## 📄 License
+This project follows [semver](https://semver.org/). Releases are published to npm via GitHub Releases. See the [release workflow](.github/workflows/release.yml) for details.
 
-MIT
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## License
+
+[MIT](./LICENSE)

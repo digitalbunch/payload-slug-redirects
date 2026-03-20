@@ -1,6 +1,6 @@
 {
   "name": "payload-slug-redirects",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "PayloadCMS plugin that automatically creates slug redirects when document slugs change",
   "license": "MIT",
   "type": "module",
@@ -29,6 +29,10 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "packageManager": "pnpm@10.25.0",
+  "engines": {
+    "node": ">=20"
+  },
   "files": [
     "dist"
   ],
@@ -36,7 +40,10 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "lint": "oxlint src/",
+    "lint:fix": "oxlint src/ --fix",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
   },
   "peerDependencies": {
@@ -49,9 +56,11 @@
     }
   },
   "devDependencies": {
-    "next": "^15.5.12",
-    "payload": "^3.79.0",
-    "tsup": "^8.0.0",
+    "@vitest/coverage-v8": "^4.1.0",
+    "next": "^16.2.0",
+    "oxlint": "^1.56.0",
+    "payload": "^3.79.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }

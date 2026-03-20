@@ -9,11 +9,15 @@ export interface ResolveSlugRedirectOptions {
    * Build the redirect destination URL from the resolved slug and locale.
    * Defaults to `/${locale}/${collectionType}/${newSlug}`.
    */
-  buildUrl?: (newSlug: string, locale: string) => string
+  buildUrl?: (newSlug: string, locale: string, collectionType: string) => string
   /** Default: 'slug-redirects' */
   redirectsCollection?: string
   /** The document field to read the current slug from. Default: 'slug' */
   slugField?: string
+  /** Fallback locale passed to the CMS when fetching the document. Default: none (uses CMS default). */
+  fallbackLocale?: string
+  /** Use a permanent (308/301) or temporary (307/302) redirect. Default: true. */
+  permanent?: boolean
 }
 
 export interface RedirectResult {
@@ -45,15 +49,15 @@ export interface RedirectResult {
 export async function resolveSlugRedirect(
   options: ResolveSlugRedirectOptions,
 ): Promise<RedirectResult | null> {
-  const { fromSlug, locale, collectionType, cmsUrl, buildUrl, redirectsCollection, slugField } = options
+  const { fromSlug, locale, collectionType, cmsUrl, buildUrl, redirectsCollection, slugField, fallbackLocale, permanent = true } = options
 
-  const newSlug = await fetchCurrentSlug({ fromSlug, locale, collectionType, cmsUrl, redirectsCollection, slugField })
+  const newSlug = await fetchCurrentSlug({ fromSlug, locale, collectionType, cmsUrl, redirectsCollection, slugField, fallbackLocale })
   if (!newSlug) return null
 
   return {
     redirect: {
-      destination: buildUrl ? buildUrl(newSlug, locale) : `/${locale}/${collectionType}/${newSlug}`,
-      permanent: true,
+      destination: buildUrl ? buildUrl(newSlug, locale, collectionType) : `/${locale}/${collectionType}/${newSlug}`,
+      permanent,
     },
   }
 }

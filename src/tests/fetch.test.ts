@@ -106,6 +106,39 @@ describe('fetchCurrentSlug', () => {
     expect(url).toContain('limit=1')
   })
 
+  it('does not include fallbackLocale when not provided', async () => {
+    const fetchMock = mockFetch(
+      { ok: true, json: { docs: [{ documentId: 42 }], totalDocs: 1 } },
+      { ok: true, json: { slug: 'new-slug' } },
+    )
+    await fetchCurrentSlug(BASE_OPTIONS)
+    expect(fetchMock.mock.calls[1][0]).not.toContain('fallbackLocale')
+  })
+
+  it('includes fallbackLocale in the document query when provided', async () => {
+    const fetchMock = mockFetch(
+      { ok: true, json: { docs: [{ documentId: 42 }], totalDocs: 1 } },
+      { ok: true, json: { slug: 'new-slug' } },
+    )
+    await fetchCurrentSlug({ ...BASE_OPTIONS, fallbackLocale: 'ar' })
+    expect(fetchMock.mock.calls[1][0]).toContain('fallbackLocale=ar')
+  })
+
+  it('rejects collectionType with path traversal characters', async () => {
+    await expect(fetchCurrentSlug({ ...BASE_OPTIONS, collectionType: '../admin' })).rejects.toThrow('Invalid collectionType')
+  })
+
+  it('rejects redirectsCollection with path traversal characters', async () => {
+    await expect(fetchCurrentSlug({ ...BASE_OPTIONS, redirectsCollection: '../admin' })).rejects.toThrow('Invalid redirectsCollection')
+  })
+
+  it('rejects documentId with path traversal characters from CMS response', async () => {
+    mockFetch(
+      { ok: true, json: { docs: [{ documentId: '../../admin' }], totalDocs: 1 } },
+    )
+    await expect(fetchCurrentSlug(BASE_OPTIONS)).rejects.toThrow('Invalid documentId')
+  })
+
   it('fetches the document by its ID from the correct collection', async () => {
     const fetchMock = mockFetch(
       { ok: true, json: { docs: [{ documentId: 99 }], totalDocs: 1 } },

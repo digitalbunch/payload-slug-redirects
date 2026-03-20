@@ -13,6 +13,8 @@ export interface CreateSlugRedirectHandlerConfig {
   redirectsCollection?: string
   /** The document field to read the current slug from. Default: 'slug' */
   slugField?: string
+  /** Fallback locale passed to the CMS when fetching the document. Default: none (uses CMS default). */
+  fallbackLocale?: string
 }
 
 /**
@@ -53,6 +55,7 @@ export function createSlugRedirectHandler(config: CreateSlugRedirectHandlerConfi
       cmsUrl: config.cmsUrl,
       redirectsCollection: config.redirectsCollection,
       slugField: config.slugField,
+      fallbackLocale: config.fallbackLocale,
     })
 
     if (!newSlug) {

@@ -34,6 +34,13 @@ describe('buildSlugRedirectsCollection', () => {
     expect((config.access as any).read()).toBe(true)
   })
 
+  it('blocks direct create and update access but allows delete', () => {
+    const config = buildSlugRedirectsCollection(COLLECTIONS, LOCALES)
+    expect((config.access as any).create()).toBe(false)
+    expect((config.access as any).update()).toBe(false)
+    expect((config.access as any).delete()).toBe(true)
+  })
+
   it('includes fromSlug, locale, collectionType, documentId fields', () => {
     const config = buildSlugRedirectsCollection(COLLECTIONS, LOCALES)
     const fieldNames = (config.fields as any[]).map((f) => f.name)
@@ -87,5 +94,11 @@ describe('buildSlugRedirectsCollection', () => {
     const config = buildSlugRedirectsCollection(COLLECTIONS, LOCALES)
     const field = (config.fields as any[]).find((f) => f.name === 'fromSlug')
     expect(field.index).toBe(true)
+  })
+
+  it('stores documentId as text to support both SQL and MongoDB IDs', () => {
+    const config = buildSlugRedirectsCollection(COLLECTIONS, LOCALES)
+    const field = (config.fields as any[]).find((f) => f.name === 'documentId')
+    expect(field.type).toBe('text')
   })
 })

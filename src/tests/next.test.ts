@@ -157,9 +157,26 @@ describe('resolveSlugRedirect', () => {
       locale: 'ar',
       collectionType: 'posts',
       cmsUrl: 'https://cms.example.com',
-      buildUrl: (slug, locale) => `/custom/${locale}/${slug}`,
+      buildUrl: (slug, locale, collectionType) => `/custom/${locale}/${collectionType}/${slug}`,
     })
-    expect(result?.redirect.destination).toBe('/custom/ar/new-slug')
+    expect(result?.redirect.destination).toBe('/custom/ar/posts/new-slug')
+  })
+
+  it('returns a temporary redirect when permanent is false', async () => {
+    const fetchMock = makeFetchMock([
+      { ok: true, json: { docs: [{ documentId: 1 }], totalDocs: 1 } },
+      { ok: true, json: { slug: 'new-slug' } },
+    ])
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await resolveSlugRedirect({
+      fromSlug: 'old-slug',
+      locale: 'en',
+      collectionType: 'posts',
+      cmsUrl: 'https://cms.example.com',
+      permanent: false,
+    })
+    expect(result?.redirect.permanent).toBe(false)
   })
 
   it('uses default destination URL without buildUrl', async () => {
