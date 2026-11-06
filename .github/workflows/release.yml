@@ -18,6 +18,8 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
+      - run: test "${GITHUB_REF_NAME#v}" = "$(node -p "require('./package.json').version")"
+      - run: npm install -g npm@11.21.2
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck

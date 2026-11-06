@@ -29,6 +29,7 @@ Always run `lint`, `typecheck`, and `test` before considering any change done.
 - Single locale (`['en']`) -> `slugField` defaults to `'slug'`, injected as `type: 'text'`
 - Multiple locales -> `slugField` defaults to `'localizedSlugs'`, injected as `type: 'json'`
 - Injection is skipped if the field already exists on the collection
+- The plugin never writes `localizedSlugs`. Consumers populate it, and the hook records nothing while it is empty
 
 **Why `json` and not `localized: true`**
 Payload v3 `afterChange` hooks return only the current locale's string for `localized: true` fields, not an object. A `json` blob field is the only reliable way to track per-locale slugs.

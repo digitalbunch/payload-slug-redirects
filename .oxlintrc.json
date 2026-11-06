@@ -11,6 +11,7 @@
     "no-console": "warn",
     "prefer-const": "error",
     "no-var": "error",
+    "no-underscore-dangle": ["warn", { "allow": ["_status"] }],
     "typescript/no-explicit-any": "off"
   },
   "overrides": [
