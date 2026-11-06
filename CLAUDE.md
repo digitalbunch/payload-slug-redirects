@@ -40,7 +40,7 @@ Fires only after a successful `payload.create` call, and only in `NODE_ENV=produ
 To support both SQL (numeric IDs) and MongoDB (ObjectId strings). The hook converts `doc.id` to a string before saving.
 
 **Access control on the redirects collection**
-`create` and `update` are blocked (`() => false`). The hook uses `overrideAccess: true` to bypass this. `read` and `delete` are open. This prevents manual creation of invalid records while allowing admin cleanup.
+`create` and `update` are blocked (`() => false`). The hook uses `overrideAccess: true` to bypass this. `read` is public because `src/next/` fetches without credentials. `delete` requires a user from the `admin.user` collection, so anonymous requests and users from other auth collections are rejected. This prevents manual creation of invalid records while allowing admin cleanup.
 
 **`satisfies Plugin` -- not `: Plugin`**
 The inner function in `src/index.ts` uses `satisfies Plugin` instead of `: Plugin`. This preserves the narrower `Config` return type (not `Config | Promise<Config>`), which lets tests access `result.collections` without TypeScript errors.

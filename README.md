@@ -240,7 +240,7 @@ Auto-created by the plugin. Visible in the admin UI under the "System" group by 
 | `collectionType` | select | Source collection |
 | `documentId` | text | Document ID (works with both SQL and MongoDB) |
 
-Write access is locked down. Only the plugin's hook can create records (via `overrideAccess`). Admins can delete stale records through the UI.
+Write access is locked down. Only the plugin's hook can create records (via `overrideAccess`). Only users from the collection set in `admin.user` can delete stale records. Other auth collections and anonymous requests are rejected. Reads stay public because the Next.js helpers fetch redirects without credentials.
 
 ## Exports
 

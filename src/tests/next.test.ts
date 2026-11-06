@@ -51,6 +51,16 @@ describe('createSlugRedirectHandler', () => {
     expect(res.statusCode).toBe(400)
   })
 
+  it('returns 400 without calling the CMS when collectionType is not a safe path segment', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const handler = createSlugRedirectHandler({ cmsUrl: 'https://cms.example.com' })
+    const res = makeRes()
+    await handler({ query: { fromSlug: 'old', locale: 'en', collectionType: '../users' } }, res)
+    expect(res.statusCode).toBe(400)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('returns 400 when collectionType is missing', async () => {
     const handler = createSlugRedirectHandler({ cmsUrl: 'https://cms.example.com' })
     const res = makeRes()

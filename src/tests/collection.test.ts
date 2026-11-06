@@ -34,11 +34,30 @@ describe('buildSlugRedirectsCollection', () => {
     expect((config.access as any).read()).toBe(true)
   })
 
-  it('blocks direct create and update access but allows delete', () => {
+  it('blocks direct create and update access', () => {
     const config = buildSlugRedirectsCollection(COLLECTIONS, LOCALES)
     expect((config.access as any).create()).toBe(false)
     expect((config.access as any).update()).toBe(false)
-    expect((config.access as any).delete()).toBe(true)
+  })
+
+  describe('delete access', () => {
+    const canDelete = (user: { collection: string } | null) => {
+      const config = buildSlugRedirectsCollection(COLLECTIONS, LOCALES)
+      const req = { user, payload: { config: { admin: { user: 'admins' } } } }
+      return (config.access as any).delete({ req })
+    }
+
+    it('rejects anonymous requests', () => {
+      expect(canDelete(null)).toBe(false)
+    })
+
+    it('rejects users from other auth collections', () => {
+      expect(canDelete({ collection: 'accounts' })).toBe(false)
+    })
+
+    it('allows users from the admin collection', () => {
+      expect(canDelete({ collection: 'admins' })).toBe(true)
+    })
   })
 
   it('includes fromSlug, locale, collectionType, documentId fields', () => {
