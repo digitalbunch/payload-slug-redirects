@@ -1,6 +1,6 @@
 {
   "name": "payload-slug-redirects",
-  "version": "2.0.0",
+  "version": "2.0.2",
   "description": "PayloadCMS plugin that automatically creates slug redirects when document slugs change",
   "license": "MIT",
   "type": "module",

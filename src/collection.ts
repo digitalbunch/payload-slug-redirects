@@ -34,7 +34,7 @@ export function buildSlugRedirectsCollection(
       read: () => true,
       create: () => false,
       update: () => false,
-      delete: () => true,
+      delete: ({ req }) => req.user?.collection === req.payload.config.admin.user,
     },
     admin: {
       hidden,
