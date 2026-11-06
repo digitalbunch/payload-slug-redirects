@@ -15,7 +15,7 @@ export interface FetchSlugOptions {
   fallbackLocale?: string
 }
 
-const SAFE_PATH_SEGMENT = /^[\w-]+$/
+export const SAFE_PATH_SEGMENT = /^[\w-]+$/
 
 function assertSafePathSegment(value: string, name: string): void {
   if (!SAFE_PATH_SEGMENT.test(value)) {

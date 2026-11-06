@@ -5,7 +5,7 @@
  *   `payload-slug-redirects/next/pages` — Pages Router resolveSlugRedirect()
  */
 
-import { fetchCurrentSlug } from './_fetch.js'
+import { fetchCurrentSlug, SAFE_PATH_SEGMENT } from './_fetch.js'
 
 export interface CreateSlugRedirectHandlerConfig {
   cmsUrl: string
@@ -45,6 +45,11 @@ export function createSlugRedirectHandler(config: CreateSlugRedirectHandlerConfi
 
     if (!fromSlug || !locale || !collectionType) {
       res.status(400).json({ error: 'Missing required query params: fromSlug, locale, collectionType' })
+      return
+    }
+
+    if (!SAFE_PATH_SEGMENT.test(collectionType)) {
+      res.status(400).json({ error: 'Invalid collectionType' })
       return
     }
 
